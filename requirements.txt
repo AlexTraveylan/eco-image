@@ -1,3 +1,4 @@
 pillow
 setuptools
 typer
+pillow-avif-plugin
