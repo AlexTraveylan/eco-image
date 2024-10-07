@@ -1,20 +1,13 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Iterable
-from enum import Enum
 from functools import cached_property
 from pathlib import Path
+from typing import override
 
 import pillow_avif  # noqa: F401
 from PIL import Image
 
 from ecoimage.common.exc import InvalidFormatError
-
-
-class Format(str, Enum):
-    JPG = "jpg"
-    PNG = "png"
-    WEBP = "webp"
-    AVIF = "avif"
 
 
 class Converter(ABC):
@@ -24,13 +17,21 @@ class Converter(ABC):
         self.initial_path = initial_path
         self._check_format()
 
-    @abstractmethod
-    def to_webp(self, *, quality: int) -> Path:
-        pass
+    def to_avif(self, *, quality: int = 30) -> Path:
+        initial_img = Image.open(self.initial_path)
+        avif_path = self.initial_path.with_suffix(".avif")
+        initial_img.save(avif_path, format="avif", quality=quality, encoder="auto")
 
-    @abstractmethod
-    def to_avif(self, *, quality: int) -> Path:
-        pass
+        return avif_path
+
+    def to_webp(self, *, quality: int = 25) -> Path:
+        initial_img = Image.open(self.initial_path)
+        initial_img = initial_img.convert("RGB")
+
+        webp_path = self.initial_path.with_suffix(".webp")
+        initial_img.save(webp_path, format="webp", optimize=True, quality=quality)
+
+        return webp_path
 
     def _check_format(self) -> None:
         if self.initial_path.suffix not in self._SUFFIXES:
@@ -48,22 +49,6 @@ class Converter(ABC):
 class JpgConverter(Converter):
     _SUFFIXES = [".jpg", ".jpeg"]
 
-    def to_avif(self, *, quality: int = 30) -> Path:
-        jpg_img = Image.open(self.initial_path)
-        avif_path = self.initial_path.with_suffix(".avif")
-        jpg_img.save(avif_path, format="avif", quality=quality, encoder="auto")
-
-        return avif_path
-
-    def to_webp(self, *, quality: int = 25) -> Path:
-        jpg_img = Image.open(self.initial_path)
-        jpg_img = jpg_img.convert("RGB")
-
-        webp_path = self.initial_path.with_suffix(".webp")
-        jpg_img.save(webp_path, format="webp", optimize=True, quality=quality)
-
-        return webp_path
-
 
 class PngConverter(Converter):
     _SUFFIXES = [".png"]
@@ -72,9 +57,9 @@ class PngConverter(Converter):
 class WebpConverter(Converter):
     _SUFFIXES = [".webp"]
 
-
-class AvifConverter(Converter):
-    _SUFFIXES = [".avif"]
+    @override
+    def to_webp(self, *, quality: int = 25) -> Path:
+        return self.initial_path
 
 
 def converter_factory(image_path: Path | str) -> Converter:
@@ -90,7 +75,7 @@ def converter_factory(image_path: Path | str) -> Converter:
         return WebpConverter(image_path)
 
     elif image_path.suffix == ".avif":
-        return AvifConverter(image_path)
+        raise InvalidFormatError(".avif is still the best format !")
 
     else:
         raise InvalidFormatError(f"Invalid format {image_path.suffix}")
