@@ -8,7 +8,7 @@ with open("requirements.txt", mode="r", encoding="utf-8") as f:
     requirements = f.readlines()
 
 setup(
-    name="ecodesign",
+    name="ecoimage",
     version="0.1",
     packages=find_packages(),
     install_requires=[lib.strip() for lib in requirements],
